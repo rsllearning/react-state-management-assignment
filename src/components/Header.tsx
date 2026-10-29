@@ -1,7 +1,7 @@
 import { Toolbar } from './Toolbar';
 
 interface HeaderProps {
-  onOpenCart?: () => void;
+  onOpenCart: () => void;
 }
 
 export function Header({ onOpenCart }: HeaderProps) {
