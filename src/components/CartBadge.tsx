@@ -1,19 +1,23 @@
+import { useCartState } from '../context/CartContext';
+
 interface CartBadgeProps {
-  count?: number;
   onClick?: () => void;
 }
 
-export function CartBadge({ count = 0, onClick }: CartBadgeProps) {
+export function CartBadge({ onClick }: CartBadgeProps) {
+  const { items } = useCartState();
+  const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <button
       type="button"
       className="cart-badge-button"
       onClick={onClick}
-      aria-label={`Cart with ${count} items`}
+      aria-label={`Cart with ${totalCount} items`}
     >
       <span className="cart-icon" aria-hidden="true">🛒</span>
       <span className="cart-badge-label">Cart</span>
-      <span className="cart-badge-count">{count}</span>
+      <span className="cart-badge-count">{totalCount}</span>
     </button>
   );
 }

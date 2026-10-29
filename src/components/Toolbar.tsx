@@ -1,7 +1,7 @@
 import { CartBadge } from './CartBadge';
 
 interface ToolbarProps {
-  onOpenCart?: () => void;
+  onOpenCart: () => void;
 }
 
 export function Toolbar({ onOpenCart }: ToolbarProps) {

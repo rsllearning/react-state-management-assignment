@@ -1,22 +1,18 @@
-import { useEffect } from 'react';
-import type { CartItem } from '../types';
+import { useEffect, useState } from 'react';
+import { useCartState, useCartDispatch } from '../context/CartContext';
 import { CartItemsList } from './CartItemsList';
 
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  items?: CartItem[];
-  onRemoveItem?: (id: string) => void;
-  onCheckout?: () => void;
 }
 
-export function CartDrawer({
-  isOpen,
-  onClose,
-  items = [],
-  onRemoveItem,
-  onCheckout,
-}: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
+  const { items } = useCartState();
+  const dispatch = useCartDispatch();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+
   const totalPrice = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -32,18 +28,44 @@ export function CartDrawer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  const handleCheckout = async () => {
+    if (items.length === 0 || isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      setCheckoutMessage(null);
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items,
+          total: totalPrice,
+          createdAt: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Order failed with status ${response.status}`);
+      }
+
+      const orderData = await response.json();
+      setCheckoutMessage(`Order #${orderData.id} placed successfully!`);
+      dispatch({ type: 'CLEAR_CART' });
+    } catch (err: unknown) {
+      const errMessage = err instanceof Error ? err.message : 'Checkout failed';
+      setCheckoutMessage(`Error: ${errMessage}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div
-      className="cart-drawer-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Shopping Cart"
-    >
+    <div className="cart-drawer-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Shopping Cart">
       <div
         className="cart-drawer-panel"
         onClick={(e) => e.stopPropagation()}
@@ -61,7 +83,12 @@ export function CartDrawer({
         </div>
 
         <div className="cart-drawer-body">
-          <CartItemsList items={items} onRemoveItem={onRemoveItem} />
+          {checkoutMessage && (
+            <div className={`checkout-alert ${checkoutMessage.startsWith('Order') ? 'success' : 'error'}`}>
+              {checkoutMessage}
+            </div>
+          )}
+          <CartItemsList />
         </div>
 
         {items.length > 0 && (
@@ -73,9 +100,10 @@ export function CartDrawer({
             <button
               type="button"
               className="btn btn-primary checkout-btn"
-              onClick={onCheckout}
+              disabled={isSubmitting || items.length === 0}
+              onClick={handleCheckout}
             >
-              Proceed to Checkout
+              {isSubmitting ? 'Processing Order...' : 'Proceed to Checkout'}
             </button>
           </div>
         )}
