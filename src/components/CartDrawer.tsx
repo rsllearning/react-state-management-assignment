@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { useCartStore, selectTotalPrice } from '../store/cartStore';
 import { CartItemsList } from './CartItemsList';
+import { CartErrorBanner } from './CartErrorBanner';
+import { CheckoutButton } from './CheckoutButton';
+import { CheckoutActorContext } from '../machines/checkoutMachine';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -9,21 +11,15 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
-  // Extract multiple properties using useShallow to prevent unnecessary re-renders
-  const { checkoutStatus, checkoutError, lastOrderId, hasItems, checkout, resetCheckout } =
-    useCartStore(
-      useShallow((state) => ({
-        checkoutStatus: state.checkoutStatus,
-        checkoutError: state.checkoutError,
-        lastOrderId: state.lastOrderId,
-        hasItems: state.items.length > 0,
-        checkout: state.checkout,
-        resetCheckout: state.resetCheckout,
-      }))
-    );
-
-  // Derived total price computed strictly through selector
   const totalPrice = useCartStore(selectTotalPrice);
+  const itemsCount = useCartStore((state) => state.items.length);
+
+  const isSuccess = CheckoutActorContext.useSelector((snapshot) =>
+    snapshot.matches('success')
+  );
+  const lastOrderId = CheckoutActorContext.useSelector(
+    (snapshot) => snapshot.context.lastOrderId
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,17 +31,9 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      resetCheckout();
-    }
-  }, [isOpen, resetCheckout]);
-
   if (!isOpen) {
     return null;
   }
-
-  const isSubmitting = checkoutStatus === 'submitting';
 
   return (
     <div
@@ -72,33 +60,22 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         </div>
 
         <div className="cart-drawer-body">
-          {checkoutStatus === 'success' && (
+          {isSuccess && (
             <div className="checkout-alert success">
               Order #{lastOrderId} placed successfully!
             </div>
           )}
-          {checkoutStatus === 'error' && checkoutError && (
-            <div className="checkout-alert error">
-              Error: {checkoutError}
-            </div>
-          )}
+          <CartErrorBanner />
           <CartItemsList />
         </div>
 
-        {hasItems && (
+        {itemsCount > 0 && (
           <div className="cart-drawer-footer">
             <div className="cart-total-row">
               <span className="cart-total-label">Total:</span>
               <span className="cart-total-value">${totalPrice.toFixed(2)}</span>
             </div>
-            <button
-              type="button"
-              className="btn btn-primary checkout-btn"
-              disabled={isSubmitting}
-              onClick={checkout}
-            >
-              {isSubmitting ? 'Processing Order...' : 'Proceed to Checkout'}
-            </button>
+            <CheckoutButton />
           </div>
         )}
       </div>
