@@ -1,11 +1,10 @@
-import type { CartItem } from '../types';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { cartItemsAtom, removeItemAtom } from '../atoms/cartAtoms';
 
-interface CartItemsListProps {
-  items?: CartItem[];
-  onRemoveItem?: (id: string) => void;
-}
+export function CartItemsList() {
+  const items = useAtomValue(cartItemsAtom);
+  const removeItem = useSetAtom(removeItemAtom);
 
-export function CartItemsList({ items = [], onRemoveItem }: CartItemsListProps) {
   if (items.length === 0) {
     return (
       <div className="cart-empty-state">
@@ -29,7 +28,7 @@ export function CartItemsList({ items = [], onRemoveItem }: CartItemsListProps) 
             <button
               type="button"
               className="btn btn-danger-outline remove-item-btn"
-              onClick={() => onRemoveItem?.(item.id)}
+              onClick={() => removeItem(item.id)}
               aria-label={`Remove ${item.name} from cart`}
             >
               Remove
