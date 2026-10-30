@@ -1,26 +1,29 @@
 import { useEffect } from 'react';
-import type { CartItem } from '../types';
+import { useShallow } from 'zustand/react/shallow';
+import { useCartStore, selectTotalPrice } from '../store/cartStore';
 import { CartItemsList } from './CartItemsList';
 
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  items?: CartItem[];
-  onRemoveItem?: (id: string) => void;
-  onCheckout?: () => void;
 }
 
-export function CartDrawer({
-  isOpen,
-  onClose,
-  items = [],
-  onRemoveItem,
-  onCheckout,
-}: CartDrawerProps) {
-  const totalPrice = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
+  // Extract multiple properties using useShallow to prevent unnecessary re-renders
+  const { checkoutStatus, checkoutError, lastOrderId, hasItems, checkout, resetCheckout } =
+    useCartStore(
+      useShallow((state) => ({
+        checkoutStatus: state.checkoutStatus,
+        checkoutError: state.checkoutError,
+        lastOrderId: state.lastOrderId,
+        hasItems: state.items.length > 0,
+        checkout: state.checkout,
+        resetCheckout: state.resetCheckout,
+      }))
+    );
+
+  // Derived total price computed strictly through selector
+  const totalPrice = useCartStore(selectTotalPrice);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -32,9 +35,17 @@ export function CartDrawer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      resetCheckout();
+    }
+  }, [isOpen, resetCheckout]);
+
   if (!isOpen) {
     return null;
   }
+
+  const isSubmitting = checkoutStatus === 'submitting';
 
   return (
     <div
@@ -61,10 +72,20 @@ export function CartDrawer({
         </div>
 
         <div className="cart-drawer-body">
-          <CartItemsList items={items} onRemoveItem={onRemoveItem} />
+          {checkoutStatus === 'success' && (
+            <div className="checkout-alert success">
+              Order #{lastOrderId} placed successfully!
+            </div>
+          )}
+          {checkoutStatus === 'error' && checkoutError && (
+            <div className="checkout-alert error">
+              Error: {checkoutError}
+            </div>
+          )}
+          <CartItemsList />
         </div>
 
-        {items.length > 0 && (
+        {hasItems && (
           <div className="cart-drawer-footer">
             <div className="cart-total-row">
               <span className="cart-total-label">Total:</span>
@@ -73,9 +94,10 @@ export function CartDrawer({
             <button
               type="button"
               className="btn btn-primary checkout-btn"
-              onClick={onCheckout}
+              disabled={isSubmitting}
+              onClick={checkout}
             >
-              Proceed to Checkout
+              {isSubmitting ? 'Processing Order...' : 'Proceed to Checkout'}
             </button>
           </div>
         )}

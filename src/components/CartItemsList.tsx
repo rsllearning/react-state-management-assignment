@@ -1,11 +1,15 @@
-import type { CartItem } from '../types';
+import { useShallow } from 'zustand/react/shallow';
+import { useCartStore } from '../store/cartStore';
 
-interface CartItemsListProps {
-  items?: CartItem[];
-  onRemoveItem?: (id: string) => void;
-}
+export function CartItemsList() {
+  // Extract multiple properties using useShallow to prevent extra renders on unrelated store mutations
+  const { items, removeItem } = useCartStore(
+    useShallow((state) => ({
+      items: state.items,
+      removeItem: state.removeItem,
+    }))
+  );
 
-export function CartItemsList({ items = [], onRemoveItem }: CartItemsListProps) {
   if (items.length === 0) {
     return (
       <div className="cart-empty-state">
@@ -29,7 +33,7 @@ export function CartItemsList({ items = [], onRemoveItem }: CartItemsListProps) 
             <button
               type="button"
               className="btn btn-danger-outline remove-item-btn"
-              onClick={() => onRemoveItem?.(item.id)}
+              onClick={() => removeItem(item.id)}
               aria-label={`Remove ${item.name} from cart`}
             >
               Remove
